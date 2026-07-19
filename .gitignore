@@ -1,4 +1,5 @@
 .DS_STORE
 media/
-TODO.txt
+*.txt
+*.json
 .quantum-env/
