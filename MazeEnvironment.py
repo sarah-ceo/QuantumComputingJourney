@@ -6,6 +6,7 @@ import pygame
 from PIL import Image
 
 class Maze(gym.Env):
+    ''' Maze environment where the agent needs to find the exit without touching the walls. Observations are an image. '''
     def __init__(self, grid_size: int = 8, img_size: int = 64):
         self.grid_size = grid_size
         self._max_episode_steps = grid_size ** 2
@@ -122,17 +123,16 @@ class Maze(gym.Env):
         self.surf.fill((255, 255, 255))
 
         colors = {
-            -1: (0, 0, 0),         # black
-            0: (255, 255, 255),   # white
-            1: (0, 255, 0),       # green
-            42: (0, 0, 255),       # blue
+            -1: (0, 0, 0),         # Walls: black
+            0: (255, 255, 255),   # Empty space: white
+            1: (0, 255, 0),       # Exit: green
+            42: (0, 0, 255),       # Agent: blue
         }
 
-        # Draw cells
         for r in range(self.grid_size):
             for c in range(self.grid_size):
                 value = self.state[r, c]
-                color = colors.get(value, (255, 0, 0))  # red for unknown values
+                color = colors[value]
 
                 rect = pygame.Rect(
                     c * self.cell_w,
@@ -142,16 +142,12 @@ class Maze(gym.Env):
                 )
 
                 pygame.draw.rect(self.surf, color, rect)
-
-                # Draw grid lines
                 pygame.draw.rect(self.surf, (150, 150, 150), rect, width=1)
 
         self.screen.blit(self.surf, (0, 0))
 
-        # pygame's array is (width, height, channels)
         frame = pygame.surfarray.array3d(self.screen)
 
-        # Convert to (height, width, channels) for matplotlib/Gymnasium
         frame = np.transpose(frame, (1, 0, 2))
 
         return frame
@@ -184,15 +180,6 @@ if __name__ == "__main__":
         else:
             frame = env.render()
             img.set_data(frame)
-
-            # actions_correspondences = {
-            #     0: "UP",
-            #     1: "LEFT",
-            #     2: "DOWN",
-            #     3: "RIGHT"
-            # }
-
-            # plt.title(f"{actions_correspondences[action]}: {env.actions_correspondences[action]}")
 
             plt.draw()
             plt.pause(0.5)
