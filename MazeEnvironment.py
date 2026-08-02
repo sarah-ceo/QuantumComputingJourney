@@ -3,11 +3,12 @@ import numpy as np
 import gymnasium as gym
 from gymnasium import logger, spaces
 import pygame
+from PIL import Image
 
 class Maze(gym.Env):
-    def __init__(self, grid_size: int = 8, img_size: int = 96):
+    def __init__(self, grid_size: int = 8, img_size: int = 64):
         self.grid_size = grid_size
-        self.max_episode_steps = grid_size ** 2
+        self._max_episode_steps = grid_size ** 2
         self.action_space = spaces.Discrete(4)
         self.actions_correspondences = {
             0: np.array([-1, 0]),
@@ -15,13 +16,17 @@ class Maze(gym.Env):
             2: np.array([1, 0]),
             3: np.array([0, 1])
         }
+        self.img_size = img_size
         self.observation_space = spaces.Box(
-            low=0, high=255, shape=(img_size, img_size, 3), dtype=np.uint8
+            low=0, high=255, shape=(self.img_size, self.img_size, 3), dtype=np.uint8
         )
 
         self.screen_width = 600
         self.screen_height = 600
         self.screen = None
+
+        self.cell_w = self.screen_width // self.grid_size
+        self.cell_h = self.screen_height // self.grid_size
 
     def reset(self, seed: int | None = None):
         super().reset(seed=seed)
@@ -67,7 +72,8 @@ class Maze(gym.Env):
                         break
                     self.state[(root+pos_delta)[0], (root+pos_delta)[1]] = -1
 
-        self.render()
+        state_img = self.render_image()
+        return state_img, {}
 
     def step(self, action: int):
         assert self.action_space.contains(action), (
@@ -81,7 +87,7 @@ class Maze(gym.Env):
         new_agent_position = self.agent_position + move
 
         reward = self.state[new_agent_position[0], new_agent_position[1]]
-        truncated = self.steps >= self.max_episode_steps
+        truncated = self.steps >= self._max_episode_steps
         terminated = reward == -1 or reward == 1
 
         if self.steps_beyond_terminated is not None:
@@ -97,8 +103,15 @@ class Maze(gym.Env):
             self.state[self.agent_position[0], self.agent_position[1]] = 0
             self.agent_position = new_agent_position
             self.state[self.agent_position[0], self.agent_position[1]] = 42
-            
-        return self.state, reward, terminated, truncated, {}
+
+        state_img = self.render_image()
+        return state_img, reward, terminated, truncated, {}
+
+    def render_image(self):
+        frame = np.transpose(self.render(), (1, 0, 2))
+        frame = frame[self.cell_h:-self.cell_h, self.cell_w:-self.cell_w, :]
+        frame = np.array(Image.fromarray(frame).resize(size=(self.img_size, self.img_size)))
+        return frame
 
     def render(self):
         if self.screen is None:
@@ -108,10 +121,6 @@ class Maze(gym.Env):
         self.surf = pygame.Surface((self.screen_width, self.screen_height))
         self.surf.fill((255, 255, 255))
 
-        rows, cols = self.state.shape
-        cell_w = self.screen_width // cols
-        cell_h = self.screen_height // rows
-
         colors = {
             -1: (0, 0, 0),         # black
             0: (255, 255, 255),   # white
@@ -120,16 +129,16 @@ class Maze(gym.Env):
         }
 
         # Draw cells
-        for r in range(rows):
-            for c in range(cols):
+        for r in range(self.grid_size):
+            for c in range(self.grid_size):
                 value = self.state[r, c]
                 color = colors.get(value, (255, 0, 0))  # red for unknown values
 
                 rect = pygame.Rect(
-                    c * cell_w,
-                    r * cell_h,
-                    cell_w,
-                    cell_h,
+                    c * self.cell_w,
+                    r * self.cell_h,
+                    self.cell_w,
+                    self.cell_h,
                 )
 
                 pygame.draw.rect(self.surf, color, rect)
