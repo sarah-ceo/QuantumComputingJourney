@@ -1,8 +1,8 @@
 import random
+from collections import deque
 import numpy as np
 import gymnasium as gym
 from gymnasium import logger, spaces
-import pygame
 from PIL import Image
 
 class Maze(gym.Env):
@@ -19,7 +19,7 @@ class Maze(gym.Env):
         }
         self.img_size = img_size
         self.observation_space = spaces.Box(
-            low=0, high=255, shape=(self.img_size, self.img_size, 3), dtype=np.uint8
+            low=0.0, high=1.0, shape=(self.img_size, self.img_size, 3), dtype=np.float32
         )
 
         self.screen_width = 600
@@ -29,7 +29,42 @@ class Maze(gym.Env):
         self.cell_w = self.screen_width // self.grid_size
         self.cell_h = self.screen_height // self.grid_size
 
-    def reset(self, seed: int | None = None):
+        self.color_map = {
+            -1: (0, 0, 0),        # Walls: black
+            0: (255, 255, 255),   # Empty space: white
+            1: (0, 255, 0),       # Exit: green
+            42: (0, 0, 255),      # Agent: blue
+        }
+
+        self._active_h = self.cell_h * self.grid_size
+        self._active_w = self.cell_w * self.grid_size
+
+        rows = np.arange(self._active_h)
+        cols = np.arange(self._active_w)
+        row_is_border = (rows % self.cell_h == 0) | (rows % self.cell_h == self.cell_h - 1)
+        col_is_border = (cols % self.cell_w == 0) | (cols % self.cell_w == self.cell_w - 1)
+        active_border_mask = row_is_border[:, None] | col_is_border[None, :]
+
+        self._border_mask = np.zeros((self.screen_height, self.screen_width), dtype=bool)
+        self._border_mask[:self._active_h, :self._active_w] = active_border_mask
+
+
+    def compute_distance_map(self):
+        dist = np.full((self.grid_size, self.grid_size), np.inf)
+        exit_pos = tuple(np.argwhere(self.state == 1)[0])
+        dist[exit_pos] = 0
+        q = deque([exit_pos])
+        while q:
+            r, c = q.popleft()
+            for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
+                nr, nc = r+dr, c+dc
+                if 0 <= nr < self.grid_size and 0 <= nc < self.grid_size \
+                and self.state[nr, nc] != -1 and dist[nr, nc] == np.inf:
+                    dist[nr, nc] = dist[r, c] + 1
+                    q.append((nr, nc))
+        return dist
+
+    def reset(self, seed: int | None = None, curriculum_level = None):
         super().reset(seed=seed)
         self.steps = 0
         self.steps_beyond_terminated = None
@@ -52,7 +87,12 @@ class Maze(gym.Env):
         self.state[self.agent_position[0], self.agent_position[1]] = 42
 
         # Inner walls
-        n_inner_walls = random.randint(0, self.grid_size)
+        if curriculum_level is None:
+            min_inner_walls, max_inner_walls, max_wall_length = 0, self.grid_size, self.grid_size
+        else:
+            (min_inner_walls, max_inner_walls, max_wall_length) = curriculum_level
+        
+        n_inner_walls = random.randint(min_inner_walls, max_inner_walls)
         all_directions = np.array([[-1, 0], [1, 0], [0, -1], [0, 1]])
         diagonals = np.array([[-1, -1], [-1, 1], [1, -1], [1, 1]])
         for _ in range(n_inner_walls):
@@ -64,7 +104,7 @@ class Maze(gym.Env):
                 direction = random.choice(possible_directions)
                 row_or_col = np.where(direction != 0)[0]
                 look_ahead_directions = [d for d in np.vstack((all_directions, diagonals)) if d[row_or_col] != -1*direction[row_or_col]]
-                length = random.randint(2, self.grid_size)
+                length = random.randint(2, max_wall_length)
                 for step in range(1, length+1):
                     pos_delta = direction * step
                     if self.state[(root+pos_delta)[0], (root+pos_delta)[1]] != 0:
@@ -73,8 +113,8 @@ class Maze(gym.Env):
                         break
                     self.state[(root+pos_delta)[0], (root+pos_delta)[1]] = -1
 
-        state_img = self.render_image()
-        return state_img, {}
+        self.distance_map = self.compute_distance_map()
+        return self.render_image(), {}
 
     def step(self, action: int):
         assert self.action_space.contains(action), (
@@ -87,7 +127,7 @@ class Maze(gym.Env):
         move = self.actions_correspondences[action]
         new_agent_position = self.agent_position + move
 
-        reward = self.state[new_agent_position[0], new_agent_position[1]]
+        reward = self.state[*new_agent_position]
         truncated = self.steps >= self._max_episode_steps
         terminated = reward == -1 or reward == 1
 
@@ -101,61 +141,34 @@ class Maze(gym.Env):
         elif terminated:
             self.steps_beyond_terminated = 0
         else:
-            self.state[self.agent_position[0], self.agent_position[1]] = 0
+            self.state[*self.agent_position] = 0
             self.agent_position = new_agent_position
-            self.state[self.agent_position[0], self.agent_position[1]] = 42
+            self.state[*self.agent_position] = 42
 
-        state_img = self.render_image()
-        return state_img, reward, terminated, truncated, {}
+        return self.render_image(), reward*10.0, terminated, truncated, {}
+    
+    def create_image(self):
+        color_grid = np.empty((self.grid_size, self.grid_size, 3), dtype=np.uint8)
+        for value, color in self.color_map.items():
+            color_grid[self.state == value] = color
+
+        # Keep consistency with former pygame rendering
+        active = np.repeat(np.repeat(color_grid, self.cell_h, axis=0), self.cell_w, axis=1)
+        canvas = np.full((self.screen_height, self.screen_width, 3), 255, dtype=np.uint8)
+        canvas[:self._active_h, :self._active_w] = active
+        canvas[self._border_mask] = (150, 150, 150)
+        return canvas
 
     def render_image(self):
-        frame = np.transpose(self.render(), (1, 0, 2))
-        frame = frame[self.cell_h:-self.cell_h, self.cell_w:-self.cell_w, :]
-        frame = np.array(Image.fromarray(frame).resize(size=(self.img_size, self.img_size)))
-        return frame
-
+        canvas = self.create_image()
+        frame = canvas[self.cell_h:-self.cell_h, self.cell_w:-self.cell_w, :]
+        img = np.array(Image.fromarray(frame).resize((self.img_size, self.img_size)))
+        img = img / 255.0
+        return img
+    
     def render(self):
-        if self.screen is None:
-            pygame.display.init()
-            self.screen = pygame.Surface((self.screen_width, self.screen_height))
-
-        self.surf = pygame.Surface((self.screen_width, self.screen_height))
-        self.surf.fill((255, 255, 255))
-
-        colors = {
-            -1: (0, 0, 0),         # Walls: black
-            0: (255, 255, 255),   # Empty space: white
-            1: (0, 255, 0),       # Exit: green
-            42: (0, 0, 255),       # Agent: blue
-        }
-
-        for r in range(self.grid_size):
-            for c in range(self.grid_size):
-                value = self.state[r, c]
-                color = colors[value]
-
-                rect = pygame.Rect(
-                    c * self.cell_w,
-                    r * self.cell_h,
-                    self.cell_w,
-                    self.cell_h,
-                )
-
-                pygame.draw.rect(self.surf, color, rect)
-                pygame.draw.rect(self.surf, (150, 150, 150), rect, width=1)
-
-        self.screen.blit(self.surf, (0, 0))
-
-        frame = pygame.surfarray.array3d(self.screen)
-
-        frame = np.transpose(frame, (1, 0, 2))
-
-        return frame
-
-    def close(self):
-        if self.screen is not None:
-            pygame.display.quit()
-            pygame.quit()
+        return self.create_image()
+    
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
@@ -163,7 +176,7 @@ if __name__ == "__main__":
 
     seed = 42
     env = Maze()
-    env.reset(seed=seed)
+    env.reset(seed=seed, curriculum_level=None)
     env.action_space.seed(seed)
     env.observation_space.seed(seed)
 
@@ -171,20 +184,17 @@ if __name__ == "__main__":
     img = plt.imshow(frame)
     plt.axis("off")
     for i in range(500):
-        env.render()
         action = env.action_space.sample()
-        _, _, terminated, truncated, _ = env.step(action)
+        _, reward, terminated, truncated, _ = env.step(action)
 
         if terminated or truncated:
-            env.reset()
+            env.reset(curriculum_level=None)
         else:
             frame = env.render()
             img.set_data(frame)
-
+            
             plt.draw()
-            plt.pause(0.5)
+            plt.pause(0.1)
         
-
-    env.close()
     plt.ioff()
     plt.show()
