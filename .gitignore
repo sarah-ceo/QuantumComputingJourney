@@ -3,4 +3,3 @@ __pycache__/
 media/
 *.txt
 .quantum-env/
-results/
