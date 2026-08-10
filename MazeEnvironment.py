@@ -94,7 +94,7 @@ class Maze(gym.Env):
         possible_agent_positions = np.where((distance_matrix > 0) & (distance_matrix <= max_agent_exit_dist))
         random_index = random.randint(0, len(possible_agent_positions[0])-1)
         self.agent_position = np.array([possible_agent_positions[0][random_index], possible_agent_positions[1][random_index]])
-        self.state[*self.agent_position] = 42
+        self.state[self.agent_position[0], self.agent_position[1]] = 42
 
         # Inner walls
         n_inner_walls = random.randint(min_inner_walls, max_inner_walls)
@@ -123,7 +123,7 @@ class Maze(gym.Env):
                         self.state[(root+pos_delta)[0], (root+pos_delta)[1]] = -1
 
         self.distance_map = self.compute_distance_map()
-        self.episode_max_steps = self.distance_map[*self.agent_position]
+        self.episode_max_steps = self.distance_map[self.agent_position[0], self.agent_position[1]]
         return self.render_image(), {}
 
     def step(self, action: int):
@@ -140,7 +140,7 @@ class Maze(gym.Env):
         if self.steps > self.episode_max_steps:
             reward = -1
         else:
-            reward = self.state[*new_agent_position]
+            reward = self.state[new_agent_position[0], new_agent_position[1]]
         truncated = self.steps >= self._max_episode_steps
         terminated = reward == -1 or reward == 1
 
@@ -154,9 +154,9 @@ class Maze(gym.Env):
         elif terminated:
             self.steps_beyond_terminated = 0
         else:
-            self.state[*self.agent_position] = 0
+            self.state[self.agent_position[0], self.agent_position[1]] = 0
             self.agent_position = new_agent_position
-            self.state[*self.agent_position] = 42
+            self.state[self.agent_position[0], self.agent_position[1]] = 42
 
         return self.render_image(), reward, terminated, truncated, {}
     
