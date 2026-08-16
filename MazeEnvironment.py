@@ -7,7 +7,7 @@ from PIL import Image
 
 class Maze(gym.Env):
     ''' Maze environment where the agent needs to find the exit without touching the walls. Observations are an image. '''
-    def __init__(self, grid_size: int = 8, img_size: int = 64):
+    def __init__(self, grid_size: int = 6, img_size: int = 64):
         self.grid_size = grid_size
         self._max_episode_steps = grid_size ** 2
         self.action_space = spaces.Discrete(4)
