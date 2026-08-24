@@ -30,7 +30,7 @@ class Maze(gym.Env):
         self.cell_h = self.screen_height // self.grid_size
 
         self.color_map = {
-            -1: (0, 0, 0),        # Walls: black
+            -1: (255, 0, 0),      # Walls: red
             0: (255, 255, 255),   # Empty space: white
             1: (0, 255, 0),       # Exit: green
             42: (0, 0, 255),      # Agent: blue
