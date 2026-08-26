@@ -7,7 +7,7 @@ from PIL import Image
 
 class Maze(gym.Env):
     ''' Maze environment where the agent needs to find the exit without touching the walls. Observations are an image. '''
-    def __init__(self, grid_size: int = 6, img_size: int = 64):
+    def __init__(self, grid_size: int = 8, img_size: int = 64):
         self.grid_size = grid_size
         self._max_episode_steps = grid_size ** 2
         self.action_space = spaces.Discrete(4)
@@ -19,34 +19,22 @@ class Maze(gym.Env):
         }
         self.img_size = img_size
         self.observation_space = spaces.Box(
-            low=0.0, high=1.0, shape=(self.img_size, self.img_size, 3), dtype=np.float32
+            low=0.0, high=1.0, shape=(self.img_size, self.img_size, 1), dtype=np.float32
         )
 
-        self.screen_width = 600
-        self.screen_height = 600
-        self.screen = None
-
-        self.cell_w = self.screen_width // self.grid_size
-        self.cell_h = self.screen_height // self.grid_size
-
         self.color_map = {
-            -1: (255, 0, 0),      # Walls: red
+            -1: (0, 0, 0),        # Walls: black
             0: (255, 255, 255),   # Empty space: white
             1: (0, 255, 0),       # Exit: green
             42: (0, 0, 255),      # Agent: blue
         }
 
-        self._active_h = self.cell_h * self.grid_size
-        self._active_w = self.cell_w * self.grid_size
-
-        rows = np.arange(self._active_h)
-        cols = np.arange(self._active_w)
-        row_is_border = (rows % self.cell_h == 0) | (rows % self.cell_h == self.cell_h - 1)
-        col_is_border = (cols % self.cell_w == 0) | (cols % self.cell_w == self.cell_w - 1)
-        active_border_mask = row_is_border[:, None] | col_is_border[None, :]
-
-        self._border_mask = np.zeros((self.screen_height, self.screen_width), dtype=bool)
-        self._border_mask[:self._active_h, :self._active_w] = active_border_mask
+        self.simplified_color_map = {
+            -1: 85,      # Walls: red
+            0: 0,   # Empty space: white
+            1: 170,       # Exit: green
+            42: 255,      # Agent: blue
+        }
 
     def compute_distance_map(self):
         dist = np.full((self.grid_size, self.grid_size), np.inf)
@@ -124,7 +112,7 @@ class Maze(gym.Env):
 
         self.distance_map = self.compute_distance_map()
         self.episode_max_steps = self.distance_map[self.agent_position[0], self.agent_position[1]]
-        return self.render_image(), {}
+        return self.create_simple_image(), {}
 
     def step(self, action: int):
         assert self.action_space.contains(action), (
@@ -158,29 +146,33 @@ class Maze(gym.Env):
             self.agent_position = new_agent_position
             self.state[self.agent_position[0], self.agent_position[1]] = 42
 
-        return self.render_image(), reward, terminated, truncated, {}
+        return self.create_simple_image(), reward, terminated, truncated, {}
     
-    def create_image(self):
+    def expand_image(self, arr):
+        img = Image.fromarray(arr)
+        img_resized = img.resize((self.img_size, self.img_size), resample=Image.Resampling.NEAREST)
+        return np.array(img_resized, dtype=np.uint8)
+
+    def create_simple_image(self):
+        color_grid = np.empty((self.grid_size, self.grid_size, 1), dtype=np.uint8)
+        for value, color in self.simplified_color_map.items():
+            color_grid[self.state == value] = color
+        return np.expand_dims(self.expand_image(np.squeeze(color_grid[1:-1, 1:-1, :], axis=-1)), axis=-1) / 255.0
+    
+    def create_rgb_image(self):
         color_grid = np.empty((self.grid_size, self.grid_size, 3), dtype=np.uint8)
         for value, color in self.color_map.items():
             color_grid[self.state == value] = color
-
-        # Keep consistency with former pygame rendering
-        active = np.repeat(np.repeat(color_grid, self.cell_h, axis=0), self.cell_w, axis=1)
-        canvas = np.full((self.screen_height, self.screen_width, 3), 255, dtype=np.uint8)
-        canvas[:self._active_h, :self._active_w] = active
-        canvas[self._border_mask] = (150, 150, 150)
-        return canvas
-
-    def render_image(self):
-        canvas = self.create_image()
-        frame = canvas[self.cell_h:-self.cell_h, self.cell_w:-self.cell_w, :]
-        img = np.array(Image.fromarray(frame).resize((self.img_size, self.img_size)))
-        img = img / 255.0
-        return img
+        return self.expand_image(color_grid)
     
     def render(self):
-        return self.create_image()
+        img = self.create_simple_image()
+        # boundaries = np.round(np.arange(1, self.grid_size + 1) * self.img_size / self.grid_size).astype(int)
+        # boundary_color = (90, 90, 90)
+        # boundaries = boundaries[boundaries < self.img_size]
+        # img[boundaries, :, :] = boundary_color
+        # img[:, boundaries, :] = boundary_color
+        return img
     
 
 if __name__ == "__main__":
