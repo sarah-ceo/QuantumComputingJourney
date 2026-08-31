@@ -115,11 +115,6 @@ class Maze(gym.Env):
         return self.create_simple_image(), {}
 
     def step(self, action: int):
-        assert self.action_space.contains(action), (
-            f"{action!r} ({type(action)}) invalid"
-        )
-        assert self.state is not None, "Call reset before using step method."
-
         self.steps += 1
 
         move = self.actions_correspondences[action]
@@ -133,11 +128,6 @@ class Maze(gym.Env):
         terminated = reward == -1 or reward == 1
 
         if self.steps_beyond_terminated is not None:
-            if self.steps_beyond_terminated == 0:
-                logger.warn(
-                    "You are calling 'step()' even though this environment has already returned terminated = True. "
-                    "You should always call 'reset()' once you receive 'terminated = True' -- any further steps are undefined behavior."
-                )
             self.steps_beyond_terminated += 1
         elif terminated:
             self.steps_beyond_terminated = 0
@@ -167,11 +157,6 @@ class Maze(gym.Env):
     
     def render(self):
         img = self.create_simple_image()
-        # boundaries = np.round(np.arange(1, self.grid_size + 1) * self.img_size / self.grid_size).astype(int)
-        # boundary_color = (90, 90, 90)
-        # boundaries = boundaries[boundaries < self.img_size]
-        # img[boundaries, :, :] = boundary_color
-        # img[:, boundaries, :] = boundary_color
         return img
     
 
