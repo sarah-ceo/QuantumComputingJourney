@@ -156,7 +156,7 @@ class Maze(gym.Env):
         return self.expand_image(color_grid)
     
     def render(self):
-        img = self.create_simple_image()
+        img = self.create_rgb_image()
         return img
     
 
