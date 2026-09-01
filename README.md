@@ -26,7 +26,7 @@ I've recreated Simon's algorithm with the example function given in the course. 
 
 ## Quantum Fourier Transform with cards shuffling
 
-An illustration of how the QFT can find a period inside a cyclic pattern with a deck of cards' shuffling (by modular multiplications). The notebook is [QFT_with_cards_shuffling.ipynb](QFT_with_cards_shuffling.ipynb).
+A short illustration of how the QFT can find a period inside a cyclic pattern with a deck of cards' shuffling (by modular multiplications). The notebook is [QFT_with_cards_shuffling.ipynb](QFT_with_cards_shuffling.ipynb).
 
 ---
 
