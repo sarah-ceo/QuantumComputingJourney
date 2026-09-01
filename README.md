@@ -24,6 +24,12 @@ I've recreated Simon's algorithm with the example function given in the course. 
 
 ---
 
+## Quantum Fourier Transform with cards shuffling
+
+An illustration of how the QFT can find a period inside a cyclic pattern with a deck of cards' shuffling (by modular multiplications). The notebook is [QFT_with_cards_shuffling.ipynb](QFT_with_cards_shuffling.ipynb).
+
+---
+
 ## Hybrid Quantum-Classical Reinforcement Learning series
 
 This series of experiments is based on the 2025 paper by Nagy et al.: "[Hybrid Quantum-Classical Reinforcement Learning in Latent Observation Spaces](https://arxiv.org/abs/2410.18284)". The aim is to compare the resources cost of classical, qubit-based and photonic-based PPO agents on different RL environments. 

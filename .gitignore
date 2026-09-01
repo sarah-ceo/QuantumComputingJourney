@@ -1,6 +1,4 @@
 .DS_STORE
 __pycache__/
-media/
+.*env/
 *.txt
-.quantum-env/
-qrl_results/
