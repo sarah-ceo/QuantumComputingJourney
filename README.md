@@ -21,3 +21,14 @@ In this second part, the exercise was to work through the matrix algebra for the
 ### Simon's algorithm
 
 I've recreated Simon's algorithm with the example function given in the course. The notebook is [course2_simon.ipynb](course2_simon.ipynb).
+
+---
+
+## Hybrid Quantum-Classical Reinforcement Learning series
+
+This series of experiments is based on the 2025 paper by Nagy et al.: "[Hybrid Quantum-Classical Reinforcement Learning in Latent Observation Spaces](https://arxiv.org/abs/2410.18284)". The aim is to compare the resources cost of classical, qubit-based and photonic-based PPO agents on different RL environments. 
+
+The series is divided in three parts:
+- [Part I: Classical vs Qubit agents on the Cart Pole environment](QRL_experiment_1.ipynb)
+- [Part II: Classical vs Qubit agents on the Lunar Lander and Maze environments](QRL_experiment_2.ipynb)
+- [Part III: Photonic agents on the three environments](QRL_experiment_3.ipynb)
