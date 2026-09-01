@@ -118,7 +118,7 @@ class Maze(gym.Env):
 
         # Compute the distance map and the agent's max allowed steps (shortest path length)
         self.distance_map = self.compute_distance_map()
-        self.episode_max_steps = self.distance_map[self.agent_position[0], self.agent_position[1]]
+        self._max_episode_steps = int(self.distance_map[self.agent_position[0], self.agent_position[1]])
         return self.create_simple_image(), {}
 
     def step(self, action: int):
@@ -129,7 +129,7 @@ class Maze(gym.Env):
         new_agent_position = self.agent_position + move
 
         # Set the reward and episode termination
-        if self.steps > self.episode_max_steps:
+        if self.steps > self._max_episode_steps:
             reward = -1
         else:
             reward = self.state[new_agent_position[0], new_agent_position[1]]
