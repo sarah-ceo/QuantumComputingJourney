@@ -10,6 +10,7 @@ class Maze(gym.Env):
         Internally, a simple grid is used but the observations are given as an image. '''
     def __init__(self, grid_size: int = 8, img_size: int = 64):
         self.grid_size = grid_size
+        self._max_episode_steps = self.grid_size * self.grid_size
 
         # 4 actions possible
         self.action_space = spaces.Discrete(4)
@@ -118,7 +119,6 @@ class Maze(gym.Env):
 
         # Compute the distance map and the agent's max allowed steps (shortest path length)
         self.distance_map = self.compute_distance_map()
-        self._max_episode_steps = int(self.distance_map[self.agent_position[0], self.agent_position[1]])
         return self.create_simple_image(), {}
 
     def step(self, action: int):
