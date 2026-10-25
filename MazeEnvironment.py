@@ -4,6 +4,7 @@ import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
 from PIL import Image
+import matplotlib.pyplot as plt
 
 class Maze(gym.Env):
     ''' Maze environment where the agent needs to find the exit without touching the walls.
@@ -143,15 +144,16 @@ class Maze(gym.Env):
         else:
             distance_reward = self.distance_map[self.agent_position[0], self.agent_position[1]] - self.distance_map[new_agent_position[0], new_agent_position[1]]
 
-        # Update the map unless the episode is over
+        # Check whether the episode is/was over
         if self.steps_beyond_terminated is not None:
             self.steps_beyond_terminated += 1
         elif terminated:
             self.steps_beyond_terminated = 0
-        else:
-            self.state[self.agent_position[0], self.agent_position[1]] = 0
-            self.agent_position = new_agent_position
-            self.state[self.agent_position[0], self.agent_position[1]] = 42
+
+        # Update the map
+        self.state[self.agent_position[0], self.agent_position[1]] = 0
+        self.agent_position = new_agent_position
+        self.state[self.agent_position[0], self.agent_position[1]] = 42
 
         return self.create_simple_image(), (reward, distance_reward), terminated, False, {}
     
@@ -179,19 +181,18 @@ class Maze(gym.Env):
         return img
     
     def render(self):
+        plt.pause(1)
         return self.create_rgb_image()
 
 if __name__ == "__main__":
     # Test the environment
     from itertools import count
-    import matplotlib.pyplot as plt
     plt.ion()
 
     curriculum_level = None
 
     seed = 42
     env = Maze()
-    pause_time = 1
 
     for i in range(500):
         env.reset(seed=seed, curriculum_level=curriculum_level)
@@ -202,21 +203,18 @@ if __name__ == "__main__":
         img = plt.imshow(frame)
         plt.axis("off")
         plt.title("")
-        plt.pause(pause_time)
 
         for _ in count():
             action = env.action_space.sample()
             _, (_, distance_reward), done, _, _ = env.step(action)
 
-            if done:
-                break
-
             frame = env.render()
             img.set_data(frame)
             
             plt.draw()
-            # plt.title(f"Distance reward: {distance_reward}")
-            plt.pause(pause_time)
+
+            if done:
+                break
 
     plt.ioff()
     plt.show()
