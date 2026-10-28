@@ -13,6 +13,10 @@ class Maze(gym.Env):
         self.grid_size = grid_size
         self._max_episode_steps = self.grid_size * self.grid_size
 
+        # The distance reward is kept small compared to the final reward (+1/-1),
+        # so that hitting a wall always costs more than any shortcut could gain
+        self.distance_reward_scale = 0.1
+
         # 4 actions possible
         self.action_space = spaces.Discrete(4)
         self.actions_correspondences = {
@@ -142,7 +146,7 @@ class Maze(gym.Env):
         if terminated:
             distance_reward = reward
         else:
-            distance_reward = self.distance_map[self.agent_position[0], self.agent_position[1]] - self.distance_map[new_agent_position[0], new_agent_position[1]]
+            distance_reward = self.distance_reward_scale * (self.distance_map[self.agent_position[0], self.agent_position[1]] - self.distance_map[new_agent_position[0], new_agent_position[1]])
 
         # Check whether the episode is/was over
         if self.steps_beyond_terminated is not None:
