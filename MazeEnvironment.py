@@ -163,10 +163,16 @@ class Maze(gym.Env):
         return np.array(img_resized, dtype=np.uint8)
 
     def create_simple_image(self):
-        color_grid = np.empty((self.grid_size, self.grid_size, 1), dtype=np.uint8)
+        ''' The observation is centered on the agent, so that its surroundings are always at the same place in the image.
+            The view is wide enough to always contain the whole maze, and everything outside of it is shown as walls '''
+        view_radius = self.grid_size - 3
+        padded_state = np.pad(self.state, view_radius, constant_values=-1)
+        row, column = self.agent_position + view_radius
+        view = padded_state[row-view_radius:row+view_radius+1, column-view_radius:column+view_radius+1]
+        color_grid = np.empty(view.shape, dtype=np.uint8)
         for value, color in self.simplified_color_map.items():
-            color_grid[self.state == value] = color
-        return np.expand_dims(self.expand_image(np.squeeze(color_grid[1:-1, 1:-1, :], axis=-1)), axis=-1) / 255.0
+            color_grid[view == value] = color
+        return np.expand_dims(self.expand_image(color_grid), axis=-1) / 255.0
     
     def create_rgb_image(self):
         color_grid = np.empty((self.grid_size, self.grid_size, 3), dtype=np.uint8)
