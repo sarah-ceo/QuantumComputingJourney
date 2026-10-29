@@ -44,8 +44,8 @@ class Maze(gym.Env):
         self.color_map = {
             -1: (0, 0, 0),          # Walls: black
             0: (255, 255, 255),     # Empty space: white
-            1: (0, 255, 0),         # Exit: red
-            42: (255, 0, 0),        # Agent: green
+            1: (0, 255, 0),         # Exit: green
+            42: (255, 0, 0),        # Agent: red
         }
 
     def compute_distance_map(self):
@@ -122,7 +122,7 @@ class Maze(gym.Env):
                             break
                         self.state[(root+pos_delta)[0], (root+pos_delta)[1]] = -1
 
-        # Compute the distance map and the agent's max allowed steps (shortest path length)
+        # Compute the distance of each cell to the exit, used for the distance reward
         self.distance_map = self.compute_distance_map()
         return self.create_simple_image(), {}
 
